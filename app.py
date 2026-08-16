@@ -4,11 +4,13 @@ import logging
 
 import streamlit as st
 
+from ml_lab.activities import build_activity_registry
 from ml_lab.config import APP_NAME, APP_VERSION, CONTENT_VERSION, configure_logging, data_root
-from ml_lab.content import KnowledgeCheck, LessonSpec, load_curriculum
+from ml_lab.content import LessonSpec, load_curriculum
 from ml_lab.exporter import build_vertical_slice_package, validate_package
-from ml_lab.runner import request_from_lab, run_code
+from ml_lab.labs import build_lab_registry
 from ml_lab.storage import ProgressStore, RestoreError
+from ml_lab.validation import validate_curriculum_startup
 
 st.set_page_config(
     page_title="ML Learning Lab",
@@ -21,8 +23,29 @@ LOGGER = configure_logging()
 
 
 @st.cache_resource
+def activity_handlers():
+    return build_activity_registry()
+
+
+@st.cache_resource
+def lab_handlers():
+    return build_lab_registry()
+
+
+@st.cache_resource
 def curriculum():
-    return load_curriculum()
+    spec = load_curriculum()
+    report = validate_curriculum_startup(spec, activity_handlers(), lab_handlers())
+    LOGGER.info(
+        "Curriculum validated lessons=%s objectives=%s activities=%s labs=%s checks=%s checkpoints=%s",
+        report.lessons,
+        report.objectives,
+        report.activities,
+        report.labs,
+        report.knowledge_checks,
+        report.lab_checkpoints,
+    )
+    return spec
 
 
 @st.cache_resource
@@ -49,7 +72,7 @@ def status_label(store: ProgressStore, item_id: str) -> str:
 
 def render_home(store: ProgressStore, lesson: LessonSpec) -> None:
     st.title(APP_NAME)
-    st.caption("Milestone 1 vertical slice · local, practical, and built for analysts")
+    st.caption("Milestone 1.1 review slice · local, practical, and built for analysts")
     st.info(
         "This review build intentionally contains the orientation entry and one complete "
         "Foundations lesson. Milestone 2 will add the full orientation and Foundations module."
@@ -88,24 +111,15 @@ def render_activity(store: ProgressStore, lesson: LessonSpec) -> None:
     activity = lesson.activity
     st.subheader(activity.title)
     st.write(activity.instructions)
-    choices = ["Select…", "reporting", "rules", "ml"]
-    answers: dict[str, str] = {}
-    for scenario in activity.scenarios:
-        answers[scenario.id] = st.selectbox(
-            scenario.prompt,
-            choices,
-            key=f"activity_{activity.id}_{scenario.id}",
-        )
-    if st.button("Check all six requests", type="primary"):
-        results = []
-        for scenario in activity.scenarios:
-            correct = answers[scenario.id] == scenario.answer
-            results.append(correct)
-            if correct:
-                st.success(f"{scenario.prompt} — {scenario.rationale}")
+    handler = activity_handlers().require(activity.type)
+    evaluation = handler.render(activity)
+    if evaluation is not None:
+        for item in evaluation.items:
+            if item.correct:
+                st.success(f"{item.prompt} — {item.rationale}")
             else:
-                st.error(f"{scenario.prompt} — {scenario.rationale}")
-        if all(results):
+                st.error(f"{item.prompt} — {item.rationale}")
+        if evaluation.passed:
             store.mark_completed(f"activity:{activity.id}", "activity")
             st.success("Activity complete. You chose the simplest suitable tool each time.")
         else:
@@ -118,25 +132,10 @@ def render_code_lab(store: ProgressStore, lesson: LessonSpec) -> None:
     lab = lesson.lab
     st.subheader(lab.title)
     st.write(lab.instructions)
-    st.warning(
-        "Trusted-local teaching safeguard: only this bounded region is checked and run in a "
-        "short-lived child process. It is not a secure sandbox for hostile code."
-    )
-    st.caption("Read-only setup")
-    st.code(lab.read_only_setup, language="python")
-    editor_key = f"editor_{lab.id}"
-    if editor_key not in st.session_state:
-        st.session_state[editor_key] = lab.default_code
-    if st.button("Reset editable region"):
-        st.session_state[editor_key] = lab.default_code
-    source = st.text_area(
-        "Editable region",
-        key=editor_key,
-        height=150,
-        help=f"This lab expects {lab.policy.min_editable_lines} editable lines.",
-    )
-    if st.button("Run checkpoint", type="primary"):
-        result = run_code(request_from_lab(lab, source))
+    handler = lab_handlers().require(lab.type)
+    run_result = handler.render(lab)
+    if run_result is not None:
+        result = run_result
         st.session_state[f"result_{lab.id}"] = {
             "status": result.status,
             "error": result.error,
@@ -155,7 +154,7 @@ def render_code_lab(store: ProgressStore, lesson: LessonSpec) -> None:
             st.error(result["error"])
         for check in result["checks"]:
             icon = "✓" if check["passed"] else "○"
-            st.write(f"{icon} `{check['name']}` → expected `{check['expected']}`")
+            st.write(f"{icon} **{check['name']}** — {check['message']}")
     if store.is_completed(f"lab:{lab.id}"):
         st.caption("✓ Code checkpoint saved")
 
@@ -227,7 +226,7 @@ def render_lesson(store: ProgressStore, lesson: LessonSpec) -> None:
 
 
 def render_export() -> None:
-    st.title("Milestone 1 evidence package")
+    st.title("Milestone 1.1 evidence package")
     st.write(
         "This uses the real project export pipeline to prove that portable analyst artifacts can "
         "be generated without Jupyter, Kaleido, Chrome, or PBIX tooling."

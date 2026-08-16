@@ -2,81 +2,58 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Literal
+from typing import Any
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from .config import CONTENT_VERSION, SCHEMA_VERSION, workspace_root
-
-
-class RoadmapUnit(BaseModel):
-    id: str
-    title: str
-    expected_lessons: int
-    milestone: int
+from .config import CONTENT_VERSION, CURRICULUM_SCHEMA_VERSION, workspace_root
 
 
-class OrientationEntry(BaseModel):
-    title: str
-    description: str
-    excel_python_map: list[dict[str, str]]
+class ContractModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
 
 
-class ActivityScenario(BaseModel):
-    id: str
-    prompt: str
-    answer: Literal["reporting", "rules", "ml"]
-    rationale: str
+class RoadmapUnit(ContractModel):
+    id: str = Field(min_length=1, max_length=80)
+    title: str = Field(min_length=1, max_length=160)
+    expected_lessons: int = Field(ge=1)
+    milestone: int = Field(ge=1)
 
 
-class ActivitySpec(BaseModel):
-    id: str
-    type: Literal["scenario_sorter"]
-    title: str
-    instructions: str
-    objective_ids: list[str]
-    scenarios: list[ActivityScenario]
+class OrientationEntry(ContractModel):
+    title: str = Field(min_length=1)
+    description: str = Field(min_length=1)
+    excel_python_map: list[dict[str, str]] = Field(min_length=1)
 
 
-class LabPolicySpec(BaseModel):
-    allowed_assignments: list[str]
-    allowed_calls: list[str] = Field(default_factory=list)
-    min_editable_lines: int
-    max_editable_lines: int
-    timeout_seconds: float = 5.0
-    output_limit_bytes: int = 65_536
+class ActivitySpec(ContractModel):
+    id: str = Field(min_length=1, max_length=80)
+    type: str = Field(min_length=1, max_length=80)
+    title: str = Field(min_length=1)
+    instructions: str = Field(min_length=1)
+    objective_ids: list[str] = Field(min_length=1)
+    configuration: dict[str, Any]
 
 
-class LabSpec(BaseModel):
-    id: str
-    title: str
-    instructions: str
-    objective_ids: list[str]
-    read_only_setup: str
-    default_code: str
-    expected_values: dict[str, str]
-    policy: LabPolicySpec
-
-    @model_validator(mode="after")
-    def validate_editable_region(self) -> "LabSpec":
-        lines = [line for line in self.default_code.splitlines() if line.strip()]
-        if not self.policy.min_editable_lines <= len(lines) <= self.policy.max_editable_lines:
-            raise ValueError("Default code does not match its declared editable-line bounds")
-        if set(self.expected_values) != set(self.policy.allowed_assignments):
-            raise ValueError("Expected values must match the allowed assignment names")
-        return self
+class LabSpec(ContractModel):
+    id: str = Field(min_length=1, max_length=80)
+    type: str = Field(min_length=1, max_length=80)
+    title: str = Field(min_length=1)
+    instructions: str = Field(min_length=1)
+    objective_ids: list[str] = Field(min_length=1)
+    configuration: dict[str, Any]
 
 
-class CheckOption(BaseModel):
-    label: str
-    rationale: str
+class CheckOption(ContractModel):
+    label: str = Field(min_length=1)
+    rationale: str = Field(min_length=1)
 
 
-class KnowledgeCheck(BaseModel):
-    id: str
-    objective_ids: list[str]
-    prompt: str
-    options: list[CheckOption]
+class KnowledgeCheck(ContractModel):
+    id: str = Field(min_length=1, max_length=80)
+    objective_ids: list[str] = Field(min_length=1)
+    prompt: str = Field(min_length=1)
+    options: list[CheckOption] = Field(min_length=2)
     correct_index: int
 
     @model_validator(mode="after")
@@ -88,32 +65,32 @@ class KnowledgeCheck(BaseModel):
         return self
 
 
-class LessonSpec(BaseModel):
-    id: str
-    module_id: str
-    title: str
-    duration_minutes: int
-    objective_ids: list[str]
-    scenario: str
-    understand: list[dict[str, str]]
+class LessonSpec(ContractModel):
+    id: str = Field(min_length=1, max_length=80)
+    module_id: str = Field(min_length=1, max_length=80)
+    title: str = Field(min_length=1)
+    duration_minutes: int = Field(gt=0, le=180)
+    objective_ids: list[str] = Field(min_length=1)
+    scenario: str = Field(min_length=1)
+    understand: list[dict[str, str]] = Field(min_length=1)
     activity: ActivitySpec
     lab: LabSpec
-    checks: list[KnowledgeCheck]
-    takeaway: str
+    checks: list[KnowledgeCheck] = Field(min_length=1)
+    takeaway: str = Field(min_length=1)
 
 
-class CurriculumSpec(BaseModel):
-    schema_version: int
-    content_version: str
-    course_title: str
+class CurriculumSpec(ContractModel):
+    schema_version: int = Field(ge=1)
+    content_version: str = Field(min_length=1)
+    course_title: str = Field(min_length=1)
     orientation_entry: OrientationEntry
-    roadmap: list[RoadmapUnit]
-    objectives: dict[str, str]
-    lessons: list[LessonSpec]
+    roadmap: list[RoadmapUnit] = Field(min_length=1)
+    objectives: dict[str, str] = Field(min_length=1)
+    lessons: list[LessonSpec] = Field(min_length=1)
 
     @model_validator(mode="after")
     def validate_contract(self) -> "CurriculumSpec":
-        if self.schema_version != SCHEMA_VERSION:
+        if self.schema_version != CURRICULUM_SCHEMA_VERSION:
             raise ValueError("Curriculum schema version is not supported")
         if self.content_version != CONTENT_VERSION:
             raise ValueError("Curriculum content version does not match the application")

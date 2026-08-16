@@ -6,7 +6,9 @@ import sqlite3
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
+
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 from .config import APP_VERSION, CONTENT_VERSION, SCHEMA_VERSION, ensure_app_directories
 
@@ -26,6 +28,102 @@ class RestorePreview:
     settings: int
 
 
+def _validate_timestamp(value: str) -> str:
+    try:
+        parsed = datetime.fromisoformat(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("must be an ISO-8601 timestamp") from exc
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        raise ValueError("must include a timezone offset")
+    return value
+
+
+def _validate_json_text(value: str, *, require_object: bool) -> str:
+    if len(value.encode("utf-8")) > 1_048_576:
+        raise ValueError("JSON value exceeds the 1 MiB row limit")
+    try:
+        parsed = json.loads(value)
+    except (TypeError, json.JSONDecodeError) as exc:
+        raise ValueError("must contain valid JSON text") from exc
+    if require_object and not isinstance(parsed, dict):
+        raise ValueError("must contain a JSON object")
+    return value
+
+
+class RestoreRow(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+
+class ProgressRestoreRow(RestoreRow):
+    item_id: str = Field(min_length=1, max_length=200, pattern=r"^[A-Za-z0-9][A-Za-z0-9:._-]*$")
+    item_type: Literal[
+        "activity", "code_lab", "knowledge_check", "lesson", "orientation", "project", "quiz"
+    ]
+    status: Literal["completed"]
+    content_version: str
+    updated_at: str
+    payload_json: str
+
+    @field_validator("content_version")
+    @classmethod
+    def validate_content_version(cls, value: str) -> str:
+        if value != CONTENT_VERSION:
+            raise ValueError("does not match the export content version")
+        return value
+
+    @field_validator("updated_at")
+    @classmethod
+    def validate_updated_at(cls, value: str) -> str:
+        return _validate_timestamp(value)
+
+    @field_validator("payload_json")
+    @classmethod
+    def validate_payload(cls, value: str) -> str:
+        return _validate_json_text(value, require_object=True)
+
+
+class QuizAttemptRestoreRow(RestoreRow):
+    id: int = Field(gt=0)
+    quiz_id: str = Field(min_length=1, max_length=200, pattern=r"^[A-Za-z0-9][A-Za-z0-9:._-]*$")
+    score: float = Field(ge=0, le=1)
+    answers_json: str
+    content_version: str
+    created_at: str
+
+    @field_validator("content_version")
+    @classmethod
+    def validate_content_version(cls, value: str) -> str:
+        if value != CONTENT_VERSION:
+            raise ValueError("does not match the export content version")
+        return value
+
+    @field_validator("created_at")
+    @classmethod
+    def validate_created_at(cls, value: str) -> str:
+        return _validate_timestamp(value)
+
+    @field_validator("answers_json")
+    @classmethod
+    def validate_answers(cls, value: str) -> str:
+        return _validate_json_text(value, require_object=True)
+
+
+class SettingRestoreRow(RestoreRow):
+    key: str = Field(min_length=1, max_length=100, pattern=r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
+    value_json: str
+    updated_at: str
+
+    @field_validator("updated_at")
+    @classmethod
+    def validate_updated_at(cls, value: str) -> str:
+        return _validate_timestamp(value)
+
+    @field_validator("value_json")
+    @classmethod
+    def validate_value(cls, value: str) -> str:
+        return _validate_json_text(value, require_object=False)
+
+
 def _utc_now() -> str:
     return datetime.now(UTC).isoformat()
 
@@ -34,6 +132,31 @@ def _canonical_json(value: Any) -> bytes:
     return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode(
         "utf-8"
     )
+
+
+def _validate_row_collection(
+    rows: list[Any], model: type[RestoreRow], collection: str, unique_field: str
+) -> list[dict[str, Any]]:
+    validated: list[dict[str, Any]] = []
+    seen: set[Any] = set()
+    for index, row in enumerate(rows):
+        try:
+            record = model.model_validate(row)
+        except ValidationError as exc:
+            detail = exc.errors(include_url=False)[0]
+            location = ".".join(str(part) for part in detail["loc"])
+            raise RestoreError(
+                f"The {collection} row {index + 1} is invalid at {location}: {detail['msg']}."
+            ) from exc
+        dumped = record.model_dump()
+        identity = dumped[unique_field]
+        if identity in seen:
+            raise RestoreError(
+                f"The {collection} rows contain duplicate {unique_field}: {identity!r}."
+            )
+        seen.add(identity)
+        validated.append(dumped)
+    return validated
 
 
 class ProgressStore:
@@ -180,6 +303,8 @@ class ProgressStore:
             envelope = json.loads(decoded)
         except (UnicodeDecodeError, json.JSONDecodeError) as exc:
             raise RestoreError("The selected file is not valid UTF-8 progress JSON.") from exc
+        if not isinstance(envelope, dict):
+            raise RestoreError("The progress export must be a top-level JSON object.")
         required = {
             "schema_version",
             "content_version",
@@ -193,21 +318,54 @@ class ProgressStore:
         missing = required - set(envelope)
         if missing:
             raise RestoreError(f"The progress export is missing: {', '.join(sorted(missing))}.")
+        unexpected = set(envelope) - required
+        if unexpected:
+            raise RestoreError(
+                f"The progress export has unsupported fields: {', '.join(sorted(unexpected))}."
+            )
         integrity = envelope["integrity"]
+        if not isinstance(integrity, dict) or set(integrity) != {"algorithm", "digest"}:
+            raise RestoreError("The progress export integrity record is malformed.")
         if integrity.get("algorithm") != "sha256":
             raise RestoreError("The progress export uses an unsupported integrity algorithm.")
+        digest_value = integrity.get("digest")
+        if (
+            not isinstance(digest_value, str)
+            or len(digest_value) != 64
+            or any(character not in "0123456789abcdefABCDEF" for character in digest_value)
+        ):
+            raise RestoreError("The progress export integrity digest is malformed.")
         payload = {key: value for key, value in envelope.items() if key != "integrity"}
         digest = hashlib.sha256(_canonical_json(payload)).hexdigest()
         if digest != integrity.get("digest"):
             raise RestoreError("The progress export failed its integrity check.")
+        if type(envelope["schema_version"]) is not int:
+            raise RestoreError("The progress export schema version is malformed.")
         if envelope["schema_version"] != SCHEMA_VERSION:
             direction = "newer" if envelope["schema_version"] > SCHEMA_VERSION else "older"
             raise RestoreError(f"This {direction} schema is not supported by Milestone 1.")
+        if not isinstance(envelope["content_version"], str):
+            raise RestoreError("The progress export content version is malformed.")
         if envelope["content_version"] != CONTENT_VERSION:
             raise RestoreError("The progress export belongs to an incompatible content version.")
+        if not isinstance(envelope["app_version"], str) or not envelope["app_version"].strip():
+            raise RestoreError("The progress export app version is malformed.")
+        try:
+            _validate_timestamp(envelope["exported_at"])
+        except ValueError as exc:
+            raise RestoreError(f"The progress export timestamp {exc}.") from exc
         for collection in ("progress", "quiz_attempts", "settings"):
             if not isinstance(envelope[collection], list):
                 raise RestoreError(f"The {collection} records are malformed.")
+        envelope["progress"] = _validate_row_collection(
+            envelope["progress"], ProgressRestoreRow, "progress", "item_id"
+        )
+        envelope["quiz_attempts"] = _validate_row_collection(
+            envelope["quiz_attempts"], QuizAttemptRestoreRow, "quiz_attempts", "id"
+        )
+        envelope["settings"] = _validate_row_collection(
+            envelope["settings"], SettingRestoreRow, "settings", "key"
+        )
         return envelope
 
     def preview_restore(self, data: bytes | str) -> RestorePreview:

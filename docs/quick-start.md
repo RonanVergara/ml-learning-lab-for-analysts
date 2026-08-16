@@ -18,9 +18,9 @@ No other Python version is supported by personal V1.
 4. Allow the first setup to download the exact packages in `requirements.lock`.
 5. The browser opens at `http://127.0.0.1:8501`.
 
-Later launches reuse the environment and work offline while the dependency lock is unchanged.
+Later launches reuse the environment and work offline while the dependency lock is unchanged. If the same application folder is already running, a second launch verifies its identity and reopens it instead of starting a duplicate.
 
-## Review the vertical slice
+## Review the Milestone 1.1 vertical slice
 
 1. Open **Start here** to see the spreadsheet-to-pandas bridge.
 2. Open **Learn: F1**.

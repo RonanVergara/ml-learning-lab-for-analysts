@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "content_version": "1.0.0-m1",
   "course_title": "ML Learning Lab for Analysts",
   "orientation_entry": {
@@ -49,34 +49,63 @@
         "title": "Choose the simplest suitable tool",
         "instructions": "Classify each request by the kind of answer it needs. Use ML only when the request asks for an unknown outcome learned from examples.",
         "objective_ids": ["F1"],
-        "scenarios": [
-          {"id": "s1", "prompt": "How many voice contacts arrived yesterday?", "answer": "reporting", "rationale": "The contacts have already happened, so this is a summary of known records."},
-          {"id": "s2", "prompt": "Route every Critical-priority case to Tier 2.", "answer": "rules", "rationale": "The condition and action are explicitly known."},
-          {"id": "s3", "prompt": "Which currently open cases are likely to miss SLA?", "answer": "ml", "rationale": "The outcome is not known yet and can be learned from labeled historical cases."},
-          {"id": "s4", "prompt": "Show average handle time by queue last month.", "answer": "reporting", "rationale": "This aggregates completed historical records."},
-          {"id": "s5", "prompt": "Send an alert whenever backlog exceeds 500 cases.", "answer": "rules", "rationale": "A fixed threshold completely defines the behavior."},
-          {"id": "s6", "prompt": "Estimate the probability of a repeat contact in the next seven days.", "answer": "ml", "rationale": "This asks for an uncertain future outcome estimated from past examples."}
-        ]
+        "configuration": {
+          "scenarios": [
+            {"id": "s1", "prompt": "How many voice contacts arrived yesterday?", "answer": "reporting", "rationale": "The contacts have already happened, so this is a summary of known records."},
+            {"id": "s2", "prompt": "Route every Critical-priority case to Tier 2.", "answer": "rules", "rationale": "The condition and action are explicitly known."},
+            {"id": "s3", "prompt": "Which currently open cases are likely to miss SLA?", "answer": "ml", "rationale": "The outcome is not known yet and can be learned from labeled historical cases."},
+            {"id": "s4", "prompt": "Show average handle time by queue last month.", "answer": "reporting", "rationale": "This aggregates completed historical records."},
+            {"id": "s5", "prompt": "Send an alert whenever backlog exceeds 500 cases.", "answer": "rules", "rationale": "A fixed threshold completely defines the behavior."},
+            {"id": "s6", "prompt": "Estimate the probability of a repeat contact in the next seven days.", "answer": "ml", "rationale": "This asks for an uncertain future outcome estimated from past examples."}
+          ]
+        }
       },
       "lab": {
         "id": "F1-LAB",
+        "type": "bounded_python",
         "title": "Label three analyst requests",
         "instructions": "Edit only the three quoted values. Use reporting, rules, or ml. Then run the checkpoint.",
         "objective_ids": ["F1"],
-        "read_only_setup": "# Read-only context\n# Each variable names a request from the activity.\n# Your editable region should contain exactly three assignments.",
-        "default_code": "yesterday_volume = \"choose\"\ncritical_routing = \"choose\"\nrepeat_contact_risk = \"choose\"",
-        "expected_values": {
-          "yesterday_volume": "reporting",
-          "critical_routing": "rules",
-          "repeat_contact_risk": "ml"
-        },
-        "policy": {
-          "allowed_assignments": ["yesterday_volume", "critical_routing", "repeat_contact_risk"],
-          "allowed_calls": [],
-          "min_editable_lines": 3,
-          "max_editable_lines": 3,
-          "timeout_seconds": 5.0,
-          "output_limit_bytes": 65536
+        "configuration": {
+          "trusted_setup": {
+            "display_code": "# Trusted, read-only setup\nlabel_guide = {\n    \"reporting\": \"summarizes known records\",\n    \"rules\": \"applies explicit logic\",\n    \"ml\": \"learns an unknown outcome from examples\",\n}",
+            "code": "label_guide = {\n    \"reporting\": \"summarizes known records\",\n    \"rules\": \"applies explicit logic\",\n    \"ml\": \"learns an unknown outcome from examples\",\n}",
+            "exports": ["label_guide"]
+          },
+          "default_code": "yesterday_volume = \"choose\"\ncritical_routing = \"choose\"\nrepeat_contact_risk = \"choose\"",
+          "checkpoints": [
+            {
+              "id": "F1-LAB-C1",
+              "label": "Yesterday's volume is reporting",
+              "expression": "yesterday_volume == 'reporting' and yesterday_volume in label_guide",
+              "pass_message": "Known historical volume belongs in reporting.",
+              "fail_message": "Yesterday's completed volume is a known fact, so use reporting."
+            },
+            {
+              "id": "F1-LAB-C2",
+              "label": "Critical routing is a rule",
+              "expression": "critical_routing == 'rules' and critical_routing in label_guide",
+              "pass_message": "An explicit routing condition is a fixed rule.",
+              "fail_message": "The priority condition and routing action are already known, so use rules."
+            },
+            {
+              "id": "F1-LAB-C3",
+              "label": "Repeat-contact risk is ML",
+              "expression": "repeat_contact_risk == 'ml' and repeat_contact_risk in label_guide",
+              "pass_message": "An uncertain future outcome learned from examples is an ML task.",
+              "fail_message": "Repeat-contact risk is an unknown future outcome, so use ml."
+            }
+          ],
+          "policy": {
+            "allowed_assignments": ["yesterday_volume", "critical_routing", "repeat_contact_risk"],
+            "allowed_calls": [],
+            "allowed_attributes": [],
+            "min_editable_lines": 3,
+            "max_editable_lines": 3,
+            "max_source_bytes": 1024,
+            "timeout_seconds": 5.0,
+            "output_limit_bytes": 65536
+          }
         }
       },
       "checks": [

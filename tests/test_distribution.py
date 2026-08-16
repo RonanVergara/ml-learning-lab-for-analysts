@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import json
 import re
 import sys
 from pathlib import Path
 
 from importlib.metadata import version
+
+from ml_lab.config import APP_ID, APP_VERSION
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -32,7 +35,22 @@ def test_launcher_and_lock_target_only_python_313() -> None:
     assert "py -3.13" in launcher
     assert "requirements.lock" in bootstrap
     assert "MLLearningLab" in bootstrap
+    assert "instance.json" in bootstrap
+    assert "app_id" in bootstrap
+    assert "project_root" in bootstrap
+    assert "launcher_pid" in bootstrap
+    assert "Port $appPort is serving another application" in bootstrap
     assert sys.version_info[:2] == (3, 13)
+
+
+def test_launcher_metadata_matches_application_identity() -> None:
+    metadata = json.loads((ROOT / "app-metadata.json").read_text(encoding="utf-8"))
+    assert metadata == {
+        "app_id": APP_ID,
+        "app_version": APP_VERSION,
+        "port": 8501,
+        "python_version": "3.13",
+    }
 
 
 def test_direct_dependency_versions_match_the_tested_environment() -> None:

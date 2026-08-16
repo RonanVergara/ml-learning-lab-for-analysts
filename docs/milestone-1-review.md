@@ -1,6 +1,6 @@
-# Milestone 1 review checklist
+# Milestone 1.1 review checklist
 
-Milestone 1 must be reviewed and explicitly approved before Milestone 2 begins.
+Milestone 1.1 must be reviewed and explicitly approved before Milestone 2 begins.
 
 ## User walkthrough
 
@@ -14,6 +14,11 @@ Milestone 1 must be reviewed and explicitly approved before Milestone 2 begins.
 ## Evidence expected
 
 - Passing automated tests.
+- Registry dispatch and complete startup curriculum validation.
+- Executable trusted setup/checkpoint coverage, including a future pandas-shaped lab.
+- Source/output bounds plus worker, temporary-directory, and descendant-process cleanup tests.
+- Application-specific duplicate-instance reuse and unidentified-instance rejection.
+- Signed row-level restore validation before mutation.
 - Validated ZIP with CSV, PNG, XLSX, IPYNB, Markdown, HTML, and JSON.
 - Exact Python 3.13 dependency lock.
 - Local state and rotated logs under `%LOCALAPPDATA%\MLLearningLab`.

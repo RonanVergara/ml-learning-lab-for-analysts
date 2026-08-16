@@ -1,0 +1,6 @@
+{
+  "app_id": "ml-learning-lab-for-analysts",
+  "app_version": "0.1.1-m1",
+  "port": 8501,
+  "python_version": "3.13"
+}

@@ -4,7 +4,7 @@ ML Learning Lab is a local Streamlit course for an analyst moving from Excel, Po
 
 ## Milestone status
 
-This repository currently implements **Milestone 1 only**: the production vertical slice required by the approved plan. It includes the learning shell, orientation entry, one complete Foundations lesson, bounded child-process code lab, versioned progress and restore, rotating local logs, and a validated CSV/PNG/XLSX/IPYNB/Markdown/HTML/JSON evidence package.
+This repository currently implements **Milestone 1.1 only**: the revised production vertical slice required by the approved plan. It includes the learning shell, orientation entry, one complete Foundations lesson, typed activity/lab registries, executable trusted setup and checkpoint contracts, complete startup curriculum validation, a bounded child-process code lab, row-validated progress restore, application-specific duplicate-instance detection, rotating local logs, and a validated CSV/PNG/XLSX/IPYNB/Markdown/HTML/JSON evidence package.
 
 Milestone 2 has deliberately not started. It requires explicit user approval after review of this slice.
 
@@ -24,7 +24,7 @@ Progress and rotating logs are stored under `%LOCALAPPDATA%\MLLearningLab`, not 
 ## Repository map
 
 - `app.py` — Streamlit application shell and Milestone 1 screens
-- `ml_lab/` — content contracts, storage, runner, and export services
+- `ml_lab/` — content contracts, registries, startup validation, storage, runner, and export services
 - `content/` — versioned curriculum manifest
 - `tests/` — automated content, storage, runner, export, and UI checks
 - `scripts/` — Windows bootstrap and review-artifact builder
@@ -37,7 +37,7 @@ Progress and rotating logs are stored under `%LOCALAPPDATA%\MLLearningLab`, not 
 - [Learner guide](docs/learner-guide.md)
 - [Developer guide](docs/developer-guide.md)
 - [Content-authoring guide](docs/content-authoring-guide.md)
-- [Milestone 1 review checklist](docs/milestone-1-review.md)
+- [Milestone 1.1 review checklist](docs/milestone-1-review.md)
 
 ## Safety and privacy
 

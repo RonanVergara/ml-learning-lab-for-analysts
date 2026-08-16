@@ -13,11 +13,11 @@ Install 64-bit CPython 3.13 from the official Windows installer and include the 
 
 ## The browser does not open
 
-Visit `http://127.0.0.1:8501` manually. If the health endpoint is already active, the launcher reuses the running instance.
+Visit `http://127.0.0.1:8501` manually. The launcher reuses a running instance only when `%LOCALAPPDATA%\MLLearningLab\state\instance.json`, its live launcher process, the normalized application folder, and the health endpoint identify this application.
 
 ## Port 8501 is occupied by another application
 
-Stop the unrelated process using port 8501 and relaunch. Milestone 1 intentionally uses a fixed loopback port so duplicate-instance detection remains predictable.
+Stop the unrelated process using port 8501 and relaunch. A generic healthy Streamlit endpoint is not enough to prove ownership, so the launcher refuses to open an instance without the matching ML Learning Lab marker. If no process owns the recorded PID but a stale marker remains, the launcher removes it automatically. A malformed or mismatched marker is preserved for diagnosis; inspect the launcher log before changing it.
 
 ## A code lab rejects an edit
 
@@ -29,7 +29,7 @@ The child process and its process tree are stopped. Reset the region and make on
 
 ## Progress will not import
 
-The app validates UTF-8 JSON, SHA-256 integrity, schema version, and content version before restore. Use an export produced by this content version. A confirmed restore creates a database backup under `%LOCALAPPDATA%\MLLearningLab\backups` before replacement.
+The app validates UTF-8 JSON, SHA-256 integrity, schema/content versions, top-level shape, and every progress, quiz, and setting row before restore. Invalid IDs, states, timestamps, JSON values, scores, duplicate keys, missing fields, and extra fields are rejected before backup or mutation. Use an export produced by this content version. A confirmed restore creates a database backup under `%LOCALAPPDATA%\MLLearningLab\backups` before replacement.
 
 ## Logs and recovery
 
