@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "content_version": "1.0.0-m1",
+  "course_title": "ML Learning Lab for Analysts",
+  "orientation_entry": {
+    "title": "Python & pandas warm-up",
+    "description": "A short bridge from spreadsheet thinking to readable Python. Milestone 1 introduces the path; the two complete orientation lessons arrive in Milestone 2.",
+    "excel_python_map": [
+      {"excel": "Worksheet table", "python": "pandas DataFrame"},
+      {"excel": "Column", "python": "Series"},
+      {"excel": "Filter", "python": "Boolean selection"},
+      {"excel": "PivotTable", "python": "groupby and aggregate"}
+    ]
+  },
+  "roadmap": [
+    {"id": "orientation", "title": "Python & pandas orientation", "expected_lessons": 2, "milestone": 2},
+    {"id": "foundations", "title": "ML Foundations", "expected_lessons": 5, "milestone": 2},
+    {"id": "regression", "title": "Regression", "expected_lessons": 5, "milestone": 3},
+    {"id": "classification", "title": "Classification", "expected_lessons": 5, "milestone": 4}
+  ],
+  "objectives": {
+    "F1": "Distinguish reporting, fixed rules, and supervised machine learning."
+  },
+  "lessons": [
+    {
+      "id": "F1",
+      "module_id": "foundations",
+      "title": "Reporting, rules, or machine learning?",
+      "duration_minutes": 25,
+      "objective_ids": ["F1"],
+      "scenario": "A BPO operations lead brings six requests to the analytics team. Some need a dashboard, some need a fixed business rule, and some ask for a prediction from historical examples.",
+      "understand": [
+        {
+          "title": "Reporting describes what is known",
+          "body": "A report summarizes recorded events: yesterday's volume, average handle time by queue, or current backlog. Excel PivotTables and Power BI visuals are excellent for these questions. A report may reveal a pattern, but it does not by itself learn how to predict a future outcome."
+        },
+        {
+          "title": "Rules apply decisions you already know",
+          "body": "A rule follows an explicit instruction such as ‘route Critical cases to Tier 2.’ Rules are transparent and dependable when the conditions are stable. They do not learn from examples; an analyst or policy owner writes the logic."
+        },
+        {
+          "title": "Supervised ML learns from labeled examples",
+          "body": "Supervised machine learning connects past inputs to a known outcome, then estimates that outcome for a new case. ‘Which open cases are likely to miss SLA?’ is an ML-shaped question when historical cases contain both prediction-time features and the final SLA result. ML is useful only when the prediction changes a real decision."
+        }
+      ],
+      "activity": {
+        "id": "F1-SORT",
+        "type": "scenario_sorter",
+        "title": "Choose the simplest suitable tool",
+        "instructions": "Classify each request by the kind of answer it needs. Use ML only when the request asks for an unknown outcome learned from examples.",
+        "objective_ids": ["F1"],
+        "scenarios": [
+          {"id": "s1", "prompt": "How many voice contacts arrived yesterday?", "answer": "reporting", "rationale": "The contacts have already happened, so this is a summary of known records."},
+          {"id": "s2", "prompt": "Route every Critical-priority case to Tier 2.", "answer": "rules", "rationale": "The condition and action are explicitly known."},
+          {"id": "s3", "prompt": "Which currently open cases are likely to miss SLA?", "answer": "ml", "rationale": "The outcome is not known yet and can be learned from labeled historical cases."},
+          {"id": "s4", "prompt": "Show average handle time by queue last month.", "answer": "reporting", "rationale": "This aggregates completed historical records."},
+          {"id": "s5", "prompt": "Send an alert whenever backlog exceeds 500 cases.", "answer": "rules", "rationale": "A fixed threshold completely defines the behavior."},
+          {"id": "s6", "prompt": "Estimate the probability of a repeat contact in the next seven days.", "answer": "ml", "rationale": "This asks for an uncertain future outcome estimated from past examples."}
+        ]
+      },
+      "lab": {
+        "id": "F1-LAB",
+        "title": "Label three analyst requests",
+        "instructions": "Edit only the three quoted values. Use reporting, rules, or ml. Then run the checkpoint.",
+        "objective_ids": ["F1"],
+        "read_only_setup": "# Read-only context\n# Each variable names a request from the activity.\n# Your editable region should contain exactly three assignments.",
+        "default_code": "yesterday_volume = \"choose\"\ncritical_routing = \"choose\"\nrepeat_contact_risk = \"choose\"",
+        "expected_values": {
+          "yesterday_volume": "reporting",
+          "critical_routing": "rules",
+          "repeat_contact_risk": "ml"
+        },
+        "policy": {
+          "allowed_assignments": ["yesterday_volume", "critical_routing", "repeat_contact_risk"],
+          "allowed_calls": [],
+          "min_editable_lines": 3,
+          "max_editable_lines": 3,
+          "timeout_seconds": 5.0,
+          "output_limit_bytes": 65536
+        }
+      },
+      "checks": [
+        {
+          "id": "F1-C1",
+          "objective_ids": ["F1"],
+          "prompt": "A manager wants last week's CSAT by channel. What should you start with?",
+          "options": [
+            {"label": "A report", "rationale": "Correct: the values are already known and only need summarizing."},
+            {"label": "A fixed rule", "rationale": "A rule performs an action; it does not summarize recorded scores."},
+            {"label": "A machine-learning model", "rationale": "A model is unnecessary because no unknown outcome is being predicted."}
+          ],
+          "correct_index": 0
+        },
+        {
+          "id": "F1-C2",
+          "objective_ids": ["F1"],
+          "prompt": "Which request is best shaped for supervised ML?",
+          "options": [
+            {"label": "List all queues", "rationale": "This is a straightforward lookup or report."},
+            {"label": "Predict whether a new case will be reopened", "rationale": "Correct: it asks for an unknown labeled outcome for a new case."},
+            {"label": "Escalate every P1 case", "rationale": "This is a complete fixed rule."}
+          ],
+          "correct_index": 1
+        },
+        {
+          "id": "F1-C3",
+          "objective_ids": ["F1"],
+          "prompt": "Why should an analyst prefer a rule when the decision logic is already complete and stable?",
+          "options": [
+            {"label": "Rules always have higher accuracy", "rationale": "Rules do not have predictive accuracy unless they are being evaluated as predictions."},
+            {"label": "Rules are transparent and do not need learned examples", "rationale": "Correct: explicit stable logic is simpler to explain and maintain."},
+            {"label": "ML cannot use tabular data", "rationale": "Supervised ML commonly uses tabular data."}
+          ],
+          "correct_index": 1
+        }
+      ],
+      "takeaway": "Use the simplest tool that answers the question: reports for known facts, rules for known decisions, and supervised ML for unknown outcomes that can be learned from labeled examples."
+    }
+  ]
+}

@@ -42,4 +42,3 @@ Progress and rotating logs are stored under `%LOCALAPPDATA%\MLLearningLab`, not 
 ## Safety and privacy
 
 The app binds to loopback and uses no telemetry. The bounded runner is a trusted-local teaching safeguard, not a secure arbitrary-code sandbox. Do not paste untrusted code into a learning lab.
-
