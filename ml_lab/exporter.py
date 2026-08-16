@@ -20,7 +20,7 @@ from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from PIL import Image
 
-from .config import APP_VERSION, CONTENT_VERSION, SCHEMA_VERSION
+from .config import APP_ID, APP_VERSION, CONTENT_VERSION, SCHEMA_VERSION
 
 
 @dataclass(frozen=True)
@@ -64,7 +64,7 @@ def _xlsx_bytes(data: pd.DataFrame) -> bytes:
     workbook = Workbook()
     overview = workbook.active
     overview.title = "Overview"
-    overview.append(["ML Learning Lab — Milestone 1 evidence package"])
+    overview.append(["ML Learning Lab — Milestone 1.1 evidence package"])
     overview.append(["Purpose", "Validate the end-to-end project export pipeline"])
     overview.append(["Rows", len(data)])
     overview.append(["Content version", CONTENT_VERSION])
@@ -117,7 +117,7 @@ def _notebook_bytes() -> bytes:
     )
     notebook.cells = [
         nbformat.v4.new_markdown_cell(
-            "# Milestone 1 evidence analysis\n\nThis notebook uses the CSV included in the extracted package."
+            "# Milestone 1.1 evidence analysis\n\nThis notebook uses the CSV included in the extracted package."
         ),
         nbformat.v4.new_code_cell(
             "from pathlib import Path\nimport pandas as pd\n\ndata = pd.read_csv(Path('data') / 'sample_cases.csv')\ndata.head()"
@@ -135,7 +135,7 @@ def _notebook_bytes() -> bytes:
 
 def _briefs(data: pd.DataFrame) -> tuple[bytes, bytes]:
     queue = data.groupby("queue")["remaining_hours"].mean().idxmax()
-    markdown = f"""# Milestone 1 evidence brief
+    markdown = f"""# Milestone 1.1 evidence brief
 
 ## Question
 
@@ -159,8 +159,8 @@ This is pipeline evidence, not a business model or a completed course project.
     )
     html_document = (
         "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
-        "<title>Milestone 1 evidence brief</title></head><body>"
-        "<h1>Milestone 1 evidence brief</h1>" + body + "</body></html>"
+        "<title>Milestone 1.1 evidence brief</title></head><body>"
+        "<h1>Milestone 1.1 evidence brief</h1>" + body + "</body></html>"
     )
     return markdown.encode("utf-8"), html_document.encode("utf-8")
 
@@ -188,8 +188,9 @@ def build_vertical_slice_package() -> PackageBuildResult:
         {"path": "manifest.json", "bytes": None, "sha256": None, "role": "inventory"}
     )
     manifest = {
-        "package_type": "milestone-1-vertical-slice",
+        "package_type": "milestone-1.1-vertical-slice",
         "schema_version": SCHEMA_VERSION,
+        "app_id": APP_ID,
         "content_version": CONTENT_VERSION,
         "app_version": APP_VERSION,
         "generated_at": datetime.now(UTC).isoformat(),
@@ -202,7 +203,7 @@ def build_vertical_slice_package() -> PackageBuildResult:
         for path, value in sorted(artifacts.items()):
             archive.writestr(path, value)
     return PackageBuildResult(
-        filename="ml-learning-lab-milestone1-evidence.zip",
+        filename="ml-learning-lab-milestone1.1-evidence.zip",
         data=package.getvalue(),
         artifact_paths=sorted(artifacts),
     )
@@ -248,6 +249,10 @@ def validate_package(package_data: bytes) -> dict[str, object]:
         if not markdown.startswith("# ") or "<!doctype html>" not in html_text.lower():
             raise ValueError("Markdown or HTML brief is invalid")
         manifest = json.loads(archive.read("manifest.json").decode("utf-8"))
+        if manifest.get("package_type") != "milestone-1.1-vertical-slice":
+            raise ValueError("Manifest package type does not match Milestone 1.1")
+        if manifest.get("app_id") != APP_ID or manifest.get("app_version") != APP_VERSION:
+            raise ValueError("Manifest application identity does not match this build")
         inventory = {entry["path"] for entry in manifest["artifacts"]}
         if inventory != required:
             raise ValueError("Manifest does not inventory every artifact")

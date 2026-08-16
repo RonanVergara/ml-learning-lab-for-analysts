@@ -14,7 +14,7 @@ Activities use the simplest interaction that fits the concept. The first activit
 
 ## Bounded code labs
 
-Read-only context explains what already exists. Edit only the marked region—three lines in the first lesson—and run the checkpoint. Reset restores the working starter values.
+Read-only context explains the trusted setup that already exists. Edit only the marked region—three lines in the first lesson—and run the checkpoint. The app executes setup first, checks only the bounded edit, and gives checkpoint-specific feedback. Reset restores the working starter values.
 
 The runner allows only lesson-specific operations, then uses a child process, timeout, output limit, and process-tree cleanup. These features protect the learning experience from mistakes; they are not a secure sandbox for untrusted code.
 
@@ -32,7 +32,7 @@ Restore replaces the one local profile; it does not merge profiles.
 
 ## Evidence package
 
-The Milestone 1 ZIP is pipeline evidence, not a completed course project. It includes readable CSV, PNG, XLSX, IPYNB, Markdown, HTML, and JSON artifacts. Extract it before opening the notebook so its relative `data/sample_cases.csv` path works.
+The Milestone 1.1 ZIP is pipeline evidence, not a completed course project. It includes readable CSV, PNG, XLSX, IPYNB, Markdown, HTML, and JSON artifacts. Extract it before opening the notebook so its relative `data/sample_cases.csv` path works.
 
 ## Course-completion status
 

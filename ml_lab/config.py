@@ -6,8 +6,10 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
 APP_NAME = "ML Learning Lab for Analysts"
-APP_VERSION = "0.1.0-m1"
+APP_ID = "ml-learning-lab-for-analysts"
+APP_VERSION = "0.1.1-m1"
 SCHEMA_VERSION = 1
+CURRICULUM_SCHEMA_VERSION = 2
 CONTENT_VERSION = "1.0.0-m1"
 
 

@@ -12,7 +12,7 @@ def test_home_and_lesson_render(tmp_path: Path, monkeypatch) -> None:
     app = AppTest.from_file(APP_PATH, default_timeout=30).run()
     assert not app.exception
     assert app.title[0].value == "ML Learning Lab for Analysts"
-    assert any("Milestone 1 vertical slice" in caption.value for caption in app.caption)
+    assert any("Milestone 1.1 review slice" in caption.value for caption in app.caption)
 
     app.sidebar.radio[0].set_value("Learn: F1").run()
     assert not app.exception
@@ -25,7 +25,7 @@ def test_evidence_export_screen_builds_valid_package(tmp_path: Path, monkeypatch
     app = AppTest.from_file(APP_PATH, default_timeout=30).run()
     app.sidebar.radio[0].set_value("Evidence export").run(timeout=30)
     assert not app.exception
-    assert app.title[0].value == "Milestone 1 evidence package"
+    assert app.title[0].value == "Milestone 1.1 evidence package"
     assert any("Validated 7 artifacts" in success.value for success in app.success)
 
 
